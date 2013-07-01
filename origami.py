@@ -38,22 +38,22 @@ def cells_adjacent_to_cell_in_direction(cells, cell, direction):
 		fn = lambda orig, check: orig[YMAX] == check[YMIN]
 	elif direction == "left":
 		fn = lambda orig, check: orig[XMIN] == check[XMAX]
-	
+
 	if fn:
 		return [c for c in cells if fn(cell, c)]
 	return None
 
 class PaneCommand(sublime_plugin.WindowCommand):
 	"Abstract base class for commands."
-	
+
 	def get_layout(self):
 		layout = self.window.get_layout()
 		print layout
 		cells = layout["cells"]
 		rows = layout["rows"]
-		cols = layout["cols"]	
+		cols = layout["cols"]
 		return rows, cols, cells
-	
+
 	def travel_to_pane(self, direction):
 		window = self.window
 		rows, cols, cells = self.get_layout()
@@ -62,17 +62,19 @@ class PaneCommand(sublime_plugin.WindowCommand):
 		if len(adjacent_cells) > 0:
 			new_view_index = cells.index(adjacent_cells[0])
 			window.focus_group(new_view_index)
-	
+
 	def carry_file_to_pane(self, direction):
 		view = self.window.active_view()
 		window = self.window
 		group = self.travel_to_pane(direction)
 		window.set_view_index(view, window.active_group(), 0)
-	
+
 	def clone_file_to_pane(self, direction):
+		curr_view = self.window.active_view()
 		self.window.run_command("clone_file")
 		self.carry_file_to_pane(direction)
-	
+		self.window.focus_view(curr_view)
+
 	def create_pane_with_file(self,direction):
 		self.create_pane(direction)
 		self.carry_file_to_pane(direction)
@@ -81,22 +83,22 @@ class PaneCommand(sublime_plugin.WindowCommand):
 		window = self.window
 		rows, cols, cells = self.get_layout()
 		current_group = window.active_group()
-		
+
 		old_cell = cells.pop(current_group)
 		new_cell = []
-		
+
 		if direction in ("up", "down"):
 			cells = push_down_cells_after(cells, old_cell[YMAX])
 			rows.insert(old_cell[YMAX], (rows[old_cell[YMIN]] + rows[old_cell[YMAX]]) / 2)
 			new_cell = [old_cell[XMIN], old_cell[YMAX], old_cell[XMAX], old_cell[YMAX]+1]
 			old_cell = [old_cell[XMIN], old_cell[YMIN], old_cell[XMAX], old_cell[YMAX]]
-		
+
 		elif direction in ("right", "left"):
 			cells = push_right_cells_after(cells, old_cell[XMAX])
 			cols.insert(old_cell[XMAX], (cols[old_cell[XMIN]] + cols[old_cell[XMAX]]) / 2)
 			new_cell = [old_cell[XMAX], old_cell[YMIN], old_cell[XMAX]+1, old_cell[YMAX]]
 			old_cell = [old_cell[XMIN], old_cell[YMIN], old_cell[XMAX], old_cell[YMAX]]
-		
+
 		if new_cell:
 			if direction in ("left", "up"):
 				focused_cell = new_cell
@@ -109,20 +111,52 @@ class PaneCommand(sublime_plugin.WindowCommand):
 			layout = {"cols": cols, "rows": rows, "cells": cells}
 			print layout
 			window.set_layout(layout)
-	
+
+	def resize_pane(self, direction, amount=0.1):
+		window = self.window
+		rows, cols, cells = self.get_layout()
+
+		current_cell = cells[window.active_group()]
+
+		if direction in ("up", "down"):
+			block = rows
+		elif direction in ("right", "left"):
+			block = cols
+		else:
+			return
+
+		if len(block) < 3:
+			return
+
+		itempos = decrement_if_greater(current_cell[XMAX], len(block) - 2)
+		minpos, maxpos = block[itempos - 1], block[itempos + 1]
+		increment = (maxpos - minpos) * amount
+		if direction in ("down", "right"):
+			block[itempos] = block[itempos] + increment
+			if block[itempos] > maxpos:
+				block[itempos] = maxpos
+		else:
+			block[itempos] = block[itempos] - increment
+			if block[itempos] < minpos:
+				block[itempos] = minpos
+
+		layout = {"cols": cols, "rows": rows, "cells": cells}
+		print layout
+		window.set_layout(layout)
+
 	def destroy_pane(self, direction):
 		window = self.window
 		rows, cols, cells = self.get_layout()
 		current_group = window.active_group()
-		
+
 		cell_to_remove = None
 		current_cell = cells[current_group]
-		
+
 		adjacent_cells = cells_adjacent_to_cell_in_direction(cells, current_cell, direction)
 		print "number adjacent: ", len(adjacent_cells)
 		if len(adjacent_cells) == 1:
 			cell_to_remove = adjacent_cells[0]
-		
+
 		if cell_to_remove:
 			cells.remove(cell_to_remove)
 			if direction == "up":
@@ -183,3 +217,40 @@ class CreatePaneCommand(PaneCommand):
 class DestroyPaneCommand(PaneCommand):
 	def run(self, direction):
 		self.destroy_pane(direction)
+
+
+class ResizePaneCommand(PaneCommand):
+	def run(self, direction, amount=0.1):
+		print "resize"
+		self.resize_pane(direction, amount)
+
+
+class ToggleResizeModeCommand(sublime_plugin.WindowCommand):
+	def run(self):
+		curr_view = self.window.active_view()
+		if curr_view and self.window.num_groups() > 1:
+			resize_mode = curr_view.settings().get("origami_resize_mode", False)
+			if not resize_mode:
+				curr_view.set_status("origami_resize_mode", "[***Origami Resize Mode***]")
+			else:
+				curr_view.erase_status("origami_resize_mode")
+			curr_view.settings().set("origami_resize_mode", not resize_mode)
+
+
+# Another option is to use a on_query_context.
+# The resize work for all views and not only for the current one.
+# So this way you can navigate beetwen views and resize them without des/activate the resize mode for each of them.
+# Better solution ?
+# The keymap must changed to { "key": "origami_resize_mode" }
+# class ToggleResizeModeCommand(sublime_plugin.WindowCommand):
+# 	in_resize_mode = False
+
+# 	def run(self):
+# 		curr_view = self.window.active_view()
+# 		if curr_view and self.window.num_groups() > 1:
+# 			ToggleResizeModeCommand.in_resize_mode = not ToggleResizeModeCommand.in_resize_mode
+
+# class ToggleResizeModeListener(sublime_plugin.EventListener):
+# 	def on_query_context(self, view, key, op, operand, match_all):
+# 		if key == "origami_resize_mode":
+# 			return ToggleResizeModeCommand.in_resize_mode

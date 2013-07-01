@@ -27,5 +27,47 @@
   { "keys": ["ctrl+k", "ctrl+alt+up"], "command": "create_pane_with_file", "args": {"direction": "up"} },
   { "keys": ["ctrl+k", "ctrl+alt+right"], "command": "create_pane_with_file", "args": {"direction": "right"} },
   { "keys": ["ctrl+k", "ctrl+alt+down"], "command": "create_pane_with_file", "args": {"direction": "down"} },
-  { "keys": ["ctrl+k", "ctrl+alt+left"], "command": "create_pane_with_file", "args": {"direction": "left"} }  
+  { "keys": ["ctrl+k", "ctrl+alt+left"], "command": "create_pane_with_file", "args": {"direction": "left"} },
+
+  { "keys": ["ctrl+k", "ctrl+o"], "command": "toggle_resize_mode" },
+  { "keys": ["up"], "command": "resize_pane", "args": {"direction": "up", "amount": 0.1}, "context":
+    [
+      { "key": "setting.origami_resize_mode" }
+    ]
+  },
+  { "keys": ["right"], "command": "resize_pane", "args": {"direction": "right", "amount": 0.1}, "context":
+    [
+      { "key": "setting.origami_resize_mode" }
+    ]
+  },
+  { "keys": ["down"], "command": "resize_pane", "args": {"direction": "down", "amount": 0.1}, "context":
+    [
+      { "key": "setting.origami_resize_mode" }
+    ]
+  },
+  { "keys": ["left"], "command": "resize_pane", "args": {"direction": "left", "amount": 0.1}, "context":
+    [
+      { "key": "setting.origami_resize_mode" }
+    ]
+  },
+  { "keys": ["ctrl+up"], "command": "resize_pane", "args": {"direction": "up", "amount": 0.01}, "context":
+    [
+      { "key": "setting.origami_resize_mode" }
+    ]
+  },
+  { "keys": ["ctrl+right"], "command": "resize_pane", "args": {"direction": "right", "amount": 0.01}, "context":
+    [
+      { "key": "setting.origami_resize_mode" }
+    ]
+  },
+  { "keys": ["ctrl+down"], "command": "resize_pane", "args": {"direction": "down", "amount": 0.01}, "context":
+    [
+      { "key": "setting.origami_resize_mode" }
+    ]
+  },
+  { "keys": ["ctrl+left"], "command": "resize_pane", "args": {"direction": "left", "amount": 0.01}, "context":
+    [
+      { "key": "setting.origami_resize_mode" }
+    ]
+  }
 ]
